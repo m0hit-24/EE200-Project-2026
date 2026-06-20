@@ -59,11 +59,12 @@ if mode == "Single-clip mode":
             st.caption("Spectrogram")
             fig, ax = plt.subplots(figsize=(6, 4))
             ax.pcolormesh(result['t'], result['f'], result['S_dB'],
-                          shading='gouraud', cmap='magma', vmin=-80, vmax=0)
+                          shading='auto', cmap='magma', vmin=-80, vmax=0)
             ax.set_ylim(0, 4000)
             ax.set_xlabel("Time (s)")
             ax.set_ylabel("Frequency (Hz)")
             st.pyplot(fig)
+            plt.close(fig)
 
         with col2:
             st.caption("Constellation map")
@@ -75,6 +76,7 @@ if mode == "Single-clip mode":
             ax2.set_xlabel("Time (s)")
             ax2.set_ylabel("Frequency (Hz)")
             st.pyplot(fig2)
+            plt.close(fig2)
 
         st.caption("Offset histogram (top candidates)")
         top_songs = sorted(result['scores'], key=result['scores'].get, reverse=True)[:3]
@@ -90,6 +92,7 @@ if mode == "Single-clip mode":
                 ax.set_title(f"{song} (votes={result['scores'][song]})")
                 ax.set_xlabel("Offset (s)")
             st.pyplot(fig3)
+            plt.close(fig3)
         else:
             st.info("No candidate songs received any matching hashes.")
 
