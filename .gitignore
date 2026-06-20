@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
+venv/
+
+# IMPORTANT: do NOT add database.pkl here.
+# It must be committed so the deployed app works immediately.
