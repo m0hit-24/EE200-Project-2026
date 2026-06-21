@@ -1,14 +1,3 @@
-"""
-app.py
-
-Streamlit app for the audio-fingerprinting song identifier.
-Two modes:
-  1. Single-clip mode — upload one query, see spectrogram, constellation,
-     offset histogram, and the predicted song.
-  2. Batch mode — upload many queries, get results.csv with columns
-     filename, prediction.
-"""
-
 import os
 import tempfile
 
