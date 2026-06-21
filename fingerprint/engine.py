@@ -1,12 +1,3 @@
-"""
-fingerprint/engine.py
-
-Core audio-fingerprinting engine: spectrogram computation, peak picking,
-hash generation, database building, and query matching.
-This module contains NO Colab-specific commands and NO plt.show() calls,
-so it is safe to import from both build_database.py and app.py.
-"""
-
 import os
 import glob
 import pickle
