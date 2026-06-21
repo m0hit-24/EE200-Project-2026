@@ -14,7 +14,7 @@ from scipy.ndimage import maximum_filter
 # ──────────────────────────────────────────────────────────────────
 def compute_spectrogram(y, sr, nperseg=2048, noverlap=None):
         if noverlap is None:
-        noverlap = nperseg // 2
+                noverlap = nperseg // 2
     f, t, Zxx = sps.stft(y, fs=sr, window='hann', nperseg=nperseg, noverlap=noverlap)
     S = np.abs(Zxx)
     S_dB = 20 * np.log10(S + 1e-6)
