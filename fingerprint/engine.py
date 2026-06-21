@@ -1,3 +1,12 @@
+"""
+fingerprint/engine.py
+
+Core audio-fingerprinting engine: spectrogram computation, peak picking,
+hash generation, database building, and query matching.
+This module contains NO Colab-specific commands and NO plt.show() calls,
+so it is safe to import from both build_database.py and app.py.
+"""
+
 import os
 import glob
 import pickle
@@ -13,8 +22,24 @@ from scipy.ndimage import maximum_filter
 # 1. Spectrogram
 # ──────────────────────────────────────────────────────────────────
 def compute_spectrogram(y, sr, nperseg=2048, noverlap=None):
-        if noverlap is None:
-                noverlap = nperseg // 2
+    """
+    Compute the magnitude spectrogram (in dB) of a 1-D audio signal.
+
+    Parameters
+    ----------
+    y : np.ndarray      — mono audio samples
+    sr : int            — sample rate (Hz)
+    nperseg : int       — STFT window length (samples)
+    noverlap : int      — STFT overlap (samples); defaults to nperseg // 2
+
+    Returns
+    -------
+    f : np.ndarray of frequency bins (Hz)
+    t : np.ndarray of time bins (s)
+    S_dB : 2D np.ndarray, shape (len(f), len(t)) — magnitude in dB
+    """
+    if noverlap is None:
+        noverlap = nperseg // 2
     f, t, Zxx = sps.stft(y, fs=sr, window='hann', nperseg=nperseg, noverlap=noverlap)
     S = np.abs(Zxx)
     S_dB = 20 * np.log10(S + 1e-6)
@@ -25,6 +50,14 @@ def compute_spectrogram(y, sr, nperseg=2048, noverlap=None):
 # 2. Peak picking (constellation map)
 # ──────────────────────────────────────────────────────────────────
 def find_peaks_2d(S_dB, amp_threshold_db=-35, neighborhood=(20, 20)):
+    """
+    Find local maxima in a spectrogram that stand out from their
+    neighbourhood and exceed a minimum amplitude.
+
+    Returns
+    -------
+    list of (freq_bin_idx, time_bin_idx) tuples
+    """
     local_max = maximum_filter(S_dB, size=neighborhood) == S_dB
     above_thresh = S_dB > amp_threshold_db
     peak_mask = local_max & above_thresh
@@ -36,6 +69,15 @@ def find_peaks_2d(S_dB, amp_threshold_db=-35, neighborhood=(20, 20)):
 # 3. Hash generation (peak pairing)
 # ──────────────────────────────────────────────────────────────────
 def generate_hashes(peaks, f, t, fan_out=5, min_dt=0.0, max_dt=2.0):
+    """
+    Pair each peak (the 'anchor') with up to fan_out nearby peaks that
+    occur later in time (the 'targets'), within [min_dt, max_dt] seconds.
+    Each pair becomes one hash: (f1_hz, f2_hz, dt_ms).
+
+    Returns
+    -------
+    list of (hash_key, anchor_time_sec) tuples
+    """
     peaks_sorted = sorted(peaks, key=lambda p: p[1])
     hashes = []
 
@@ -64,6 +106,10 @@ def generate_hashes(peaks, f, t, fan_out=5, min_dt=0.0, max_dt=2.0):
 # ──────────────────────────────────────────────────────────────────
 def fingerprint_file(path, sr=22050, nperseg=2048, amp_threshold_db=-35,
                       neighborhood=(20, 20), fan_out=5, max_dt=2.0):
+    """
+    Load an audio file and compute its full fingerprint: hashes, the
+    raw peaks, and the spectrogram (kept for visualisation in the app).
+    """
     y, sr_ = librosa.load(path, sr=sr, mono=True)
     f, t, S_dB = compute_spectrogram(y, sr_, nperseg=nperseg)
     peaks = find_peaks_2d(S_dB, amp_threshold_db=amp_threshold_db, neighborhood=neighborhood)
@@ -75,7 +121,13 @@ def fingerprint_file(path, sr=22050, nperseg=2048, amp_threshold_db=-35,
 # 5. Database building, saving, loading
 # ──────────────────────────────────────────────────────────────────
 def build_database(song_dir, **kwargs):
+    """
+    Index every audio file in song_dir into a hash database.
 
+    Returns
+    -------
+    dict : hash_key -> list of (song_name_without_extension, anchor_time_sec)
+    """
     database = defaultdict(list)
     song_files = sorted(glob.glob(os.path.join(song_dir, '*')))
 
@@ -106,6 +158,15 @@ def load_database(path='database.pkl'):
 # 6. Identification (offset-histogram matching)
 # ──────────────────────────────────────────────────────────────────
 def identify(path, database, min_votes=5, **kwargs):
+    """
+    Identify a query audio file against the hash database.
+
+    Returns a dict containing:
+        prediction : str or None  — matched song name, or None if no confident match
+        scores     : dict         — song_name -> vote count at its best offset
+        offsets    : dict         — song_name -> Counter of offsets -> vote count
+        peaks, f, t, S_dB          — for visualisation in the app
+    """
     hashes, peaks, f, t, S_dB = fingerprint_file(path, **kwargs)
 
     offsets = defaultdict(Counter)
